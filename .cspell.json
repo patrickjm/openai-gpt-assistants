@@ -1,0 +1,21 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "degit",
+    "esbuild",
+    "openai-gpt-assistants",
+    "octocat",
+    "rmrf",
+    "socio",
+    "ryansonshine"
+  ],
+  "flagWords": [],
+  "ignorePaths": [
+    "package.json",
+    "package-lock.json",
+    "yarn.lock",
+    "tsconfig.json",
+    "node_modules/**"
+  ]
+}
