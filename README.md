@@ -1,79 +1,269 @@
-# TypeScript Library Starter
+# openai-gpt-assistants
 
-![NPM](https://img.shields.io/npm/l/@gjuchault/typescript-library-starter)
-![NPM](https://img.shields.io/npm/v/@gjuchault/typescript-library-starter)
-![GitHub Workflow Status](https://github.com/gjuchault/typescript-library-starter/actions/workflows/typescript-library-starter.yml/badge.svg?branch=main)
+![NPM](https://img.shields.io/npm/l/openai-gpt-assistants)
+![NPM](https://img.shields.io/npm/v/openai-gpt-assistants)
 
-Yet another (opinionated) TypeScript library starter template.
+Stateful, event-driven wrapper library around OpenAI's GPT Assistant API.
 
-## Opinions and limitations
+❗ **This library is in alpha and OpenAI's API is in beta, so expect potential bugs and breaking changes.**
 
-1. Relies as much as possible on each included library's defaults
-2. Only relies on GitHub Actions
-3. Does not include documentation generation
+Basic example which creates an assistant and gets a reply to a message:
 
-## Getting started
+```ts
+import OpenAI from 'openai';
+import { Context, Assistant, Thread, Message, Run } from 'openai-gpt-assistants';
 
-1. `npx degit gjuchault/typescript-library-starter my-project` or click on the `Use this template` button on GitHub!
-2. `cd my-project`
-3. `npm install`
-4. `git init` (if you used degit)
-5. `npm run setup`
+// Setup OpenAI client and context
+const openai = new OpenAI({ ... });
+const ctx = new Context(openai);
 
-To enable deployment, you will need to:
+// Create an assistant
+assistant = await Assistant.create(ctx, {
+  model: 'gpt-4-1106-preview',
+  instructions: "Reply to everything like a pirate."
+});
+// Start a chat
+const run = await Thread.createAndRun(ctx, {
+  assistant,
+  thread: {
+    messages: [{
+      role: "user",
+      content: "Hello :)"
+    }]
+  }
+});
+await run.waitUntilFinished();
+console.log("Thread:", run.thread);
+// Display a response
+const messages = await run.thread.messages();
+console.log("Response:", messages.data[0]?.content);
+```
 
-1. Set up the `NPM_TOKEN` secret in GitHub Actions ([Settings > Secrets > Actions](https://github.com/gjuchault/typescript-service-starter/settings/secrets/actions))
-2. Give `GITHUB_TOKEN` write permissions for GitHub releases ([Settings > Actions > General](https://github.com/gjuchault/typescript-service-starter/settings/actions) > Workflow permissions)
+## Getting Started
 
-## Features
+```
+yarn install openai openai-gpt-assistants
+```
 
-### Node.js, npm version
+## Recipes
 
-TypeScript Library Starter relies on [Volta](https://volta.sh/) to ensure the Node.js version is consistent across developers. It's also used in the GitHub workflow file.
+### Continuing the chat with follow-ups
 
-### TypeScript
+```ts
+const [msg, run] = await thread.createMessageAndRun({
+  role: "user",
+  content: "What is my favorite color?"
+}, { assistant });
+await run.waitUntilFinished();
+const messages = await thread.messages();
+const [gptResponse, userMessage] = messages.data;
+console.log("Response:", gptResponse.content);
+```
 
-Leverages [esbuild](https://github.com/evanw/esbuild) for blazing-fast builds but keeps `tsc` to generate `.d.ts` files.
-Generates a single ESM build.
+### Loading existing resources by ID
 
-Commands:
+Must call `.load()` after initialization.
 
-- `build`: runs type checking, then ESM and `d.ts` files in the `build/` directory
-- `clean`: removes the `build/` directory
-- `type:dts`: only generates `d.ts`
-- `type:check`: only runs type checking
-- `type:build`: only generates ESM
+```ts
+const ctx = new Context(openaiClient);
+const assistant = new Assistant(ctx, "<assistant id>");
+await assistant.load();
 
-### Tests
+const thread = new Thread(ctx, "<thread id>");
+await thread.load();
 
-TypeScript Library Starter uses [Node.js's native test runner](https://nodejs.org/api/test.html). Coverage is done using [c8](https://github.com/bcoe/c8) but will switch to Node.js's one once out.
+const message = new Message(ctx, thread, "<message id>");
+await message.load();
 
-Commands:
+const run = new Run(ctx, thread, "<run id>");
+await run.load();
+```
 
-- `test`: runs test runner
-- `test:watch`: runs test runner in watch mode
-- `test:coverage`: runs test runner and generates coverage reports
+### Creating a Thread & Run manually
 
-### Format & lint
+```ts
+const thread = await Thread.create(ctx, {
+  messages: [{
+    role: "user",
+    content: "Hello :)"
+  }]
+});
+const run = await thread.run(assistant);
+const messages = await thread.messages();
+```
 
-This template relies on the combination of [ESLint](https://github.com/eslint/eslint) — through [TypeScript-ESLint](https://github.com/typescript-eslint/typescript-eslint) for linting, and [Prettier](https://github.com/prettier/prettier) for formatting.
-It also uses [cspell](https://github.com/streetsidesoftware/cspell) to ensure correct spelling.
+Alternatively to `thread.run()`, you could do:
+```ts
+const run = await Run.create(ctx, thread, { assistant });
+await run.waitUntilFinished();
+```
 
-Commands:
+### Access underlying OpenAI library objects
 
-- `format`: runs Prettier with automatic fixing
-- `format:check`: runs Prettier without automatic fixing (used in CI)
-- `lint`: runs ESLint with automatic fixing
-- `lint:check`: runs ESLint without automatic fixing (used in CI)
-- `spell:check`: runs spell checking
+```ts
+console.log(assistant.wrappedValue);
+console.log(thread.wrappedValue);
+console.log(message.wrappedValue);
+console.log(run.wrappedValue);
+```
 
-### Releasing
+## Function calling
 
-Under the hood, this library uses [semantic-release](https://github.com/semantic-release/semantic-release) and [Commitizen](https://github.com/commitizen/cz-cli).
-The goal is to avoid manual release processes. Using `semantic-release` will automatically create a GitHub release (hence tags) as well as an npm release.
-Based on your commit history, `semantic-release` will automatically create a patch, feature, or breaking release.
+First, define the function. This was copied from the OpenAI developer documentation for function calling [here](https://platform.openai.com/docs/guides/function-calling).
 
-Commands:
+```ts
+// Example dummy function hard coded to return the same weather
+// In production, this could be your backend API or an external API
+function getCurrentWeather(location: string, unit = "fahrenheit") {
+  if (location.toLowerCase().includes("tokyo")) {
+    return JSON.stringify({ location: "Tokyo", temperature: "10", unit: "celsius" });
+  } else if (location.toLowerCase().includes("san francisco")) {
+    return JSON.stringify({ location: "San Francisco", temperature: "72", unit: "fahrenheit" });
+  } else if (location.toLowerCase().includes("paris")) {
+    return JSON.stringify({ location: "Paris", temperature: "22", unit: "fahrenheit" });
+  } else {
+    return JSON.stringify({ location, temperature: "unknown" });
+  }
+}
 
-- `cz`: interactive CLI that helps you generate a proper git commit message, using [Commitizen](https://github.com/commitizen/cz-cli)
-- `semantic-release`: triggers a release (used in CI)
+const tools = [
+  {
+    type: "function",
+    function: {
+      name: "get_current_weather",
+      description: "Get the current weather in a given location",
+      parameters: {
+        type: "object",
+        properties: {
+          location: {
+            type: "string",
+            description: "The city and state, e.g. San Francisco, CA",
+          },
+          unit: { type: "string", enum: ["celsius", "fahrenheit"] },
+        },
+        required: ["location"],
+      },
+    },
+  },
+] satisfies OpenAI.Beta.Assistants.AssistantCreateParams['tools'];
+```
+
+Then, pass `tools` to the Assistant upon creation and prompt the assistant to use the function:
+
+```ts
+const assistant = await Assistant.create(ctx, {
+  model: 'gpt-4-1106-preview',
+  tools
+});
+
+const run = await Thread.createAndRun(ctx, {
+  assistant,
+  thread: {
+    messages: [{
+      role: "user",
+      content: "Give me the weather in Tokyo using Celsius"
+    }]
+  }
+});
+```
+
+The Run status will eventually change to `requires_action`. In this case, it means the assistant is waiting for the text output from your function. The Run won't finish until you submit these outputs.
+
+You can respond to this using the built in event listener on the Run object:
+
+```ts
+run.on("actionRequired", async (action) => {
+  if (!action || action?.type !== "submit_tool_outputs") return;
+  const toolOutputs: OpenAI.Beta.Threads.Runs.RunSubmitToolOutputsParams.ToolOutput[] = [];
+  // For each function call, execute the function and submit the result.
+  // In our case, we know we only have 1 function type.
+  for(const call of action.submit_tool_outputs.tool_calls) {
+    if (call.function.name === "get_current_weather") {
+      const { location, unit } = JSON.parse(call.function.arguments);
+      const result = getCurrentWeather(location, unit);
+      toolOutputs.push({
+        tool_call_id: call.id,
+        output: result
+      })
+    }
+  }
+  await run.submitToolOutputs({
+    tool_outputs: toolOutputs
+  });
+})
+```
+
+Finally, you can wait for the Run to finish and get the response:
+
+```ts
+await run.waitUntilFinished();
+const messages = await run.thread.messages();
+console.log("Response:", messages.data[0]?.content);
+```
+
+## Listening for events
+
+Each wrapped object - `Assistant`, `Thread`, `Run`, `Message` - is an EventEmitter.
+
+```ts
+assistant.on("updated", () => {
+  console.log("Assistant updated!");
+})
+```
+
+They have the following events:
+
+- `created` - when the resource is created via the API
+- `deleted` - when the resource is deleted via the API
+- `updated` - when the **local cache** of the resource is updated.
+- `cacheInserted` - when the resource is inserted into the local cache
+- `cacheRemoved` - when the resource is removed from the local cache
+- `fetched` - when the resource is fetched from the API
+
+Note that the lib isn't notified when resources change on OpenAI's backend.
+
+### Cache Events
+
+There are also event emitters on the Context's cache. 
+
+One event emitter for all events across all objects:
+
+```ts
+const ctx = new Context(openaiClient);
+ctx.cache.emitter().on("updated", (objectType, id, value) => {
+  // objectType: "assistant" | "thread" | "message" | "run"
+  console.log("Cache updated:", objectType, id, value);
+})
+```
+
+This could be useful for logging or to replicate the cache to some other storage backend or data structure.
+
+You can also listen to events for a specific object type:
+
+```ts
+const ctx = new Context(openaiClient);
+ctx.cache.emitter("message").on("cacheInserted", (id, value) => {
+  // objectType: "assistant" | "thread" | "message" | "run"
+  console.log("New chat message:", id, value);
+})
+```
+
+Finally, you can listen to events for a specific object ID. This object ID must already exist in the cache or this will throw an error:
+
+```ts
+const ctx = new Context(openaiClient);
+ctx.cache.emitter("message", "<message id>").on("updated", (id, value) => {
+  // objectType: "assistant" | "thread" | "message" | "run"
+  console.log("Chat message updated:", id, value);
+})
+```
+
+### `Run` events
+
+`Run` objects have a few more event types. These are all produced by polling OpenAI's API:
+- statusChanged
+  - `run.on("statusChanged", (status) => { ... })`
+- actionRequired 
+  - `run.on("actionRequired", (action) => { ... })`
+- finished - run is finished, either successfully or with an error
+  - `run.on("finished", (err, status) => { ... })`

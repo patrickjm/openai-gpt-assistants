@@ -14,18 +14,9 @@
       "prerelease": true
     }
   ],
-  "repositoryUrl": "https://github.com/patrickjm/openai-gpt-assistants.git",
+  "repositoryUrl": "https://github.com/patrickjm/openai-gpt-assistants.git",
   "plugins": [
     "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
-    "@semantic-release/changelog",
-    "@semantic-release/npm",
-    [
-      "@semantic-release/github",
-      {
-        "successComment": false,
-        "failTitle": false
-      }
-    ]
+    "@semantic-release/npm"
   ]
 }

@@ -1,0 +1,24 @@
+name: Checks
+
+on: [pull_request]
+
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: yarn install
+      - name: ⬣ ESLint
+        run: yarn lint:check
+      - name: 🔬 Format
+        run: yarn format:check
+      - name: ʦ Typecheck
+        run: yarn type:check
+      - name: ⚡ Tests
+        run: yarn test
+      - name: 🔨 Build
+        run: yarn build
