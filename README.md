@@ -1,7 +1,7 @@
 # openai-gpt-assistants
 
 ![NPM](https://img.shields.io/npm/l/openai-gpt-assistants)
-![NPM](https://img.shields.io/npm/v/openai-gpt-assistants)
+[![NPM](https://img.shields.io/npm/v/openai-gpt-assistants)](https://www.npmjs.com/package/openai-gpt-assistants)
 
 Stateful, event-driven wrapper library around OpenAI's GPT Assistant API.
 
