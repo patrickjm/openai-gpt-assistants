@@ -7,16 +7,29 @@ const srcPath = path.join(process.cwd(), "src");
 const buildPath = path.join(process.cwd(), "build");
 
 async function buildFile(filePath: string) {
-  return esbuild({
+  await esbuild({
     platform: "node",
-    target: "node21",
+    target: "node18",
     format: "esm",
+    outExtension: { ".js": ".mjs" },
     nodePaths: [srcPath],
     sourcemap: true,
     external: [],
     entryPoints: [path.join(srcPath, filePath)],
     outdir: path.join(buildPath, path.dirname(filePath)),
   });
+
+  await esbuild({
+    platform: "node",
+    target: "node18",
+    format: "cjs",
+    outExtension: { ".js": ".cjs" },
+    nodePaths: [srcPath],
+    sourcemap: true,
+    external: [],
+    entryPoints: [path.join(srcPath, filePath)],
+    outdir: path.join(buildPath, path.dirname(filePath)),
+  })
 }
 
 async function build({ includeTests = false }: { includeTests?: boolean }) {

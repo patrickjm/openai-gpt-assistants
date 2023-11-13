@@ -1,7 +1,7 @@
 {
   "name": "openai-gpt-assistants",
   "description": "Unofficial stateful wrapper around OpenAI's GPT Assistant API",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "files": [
     "build",
     "src",
@@ -18,8 +18,15 @@
     "gpt-4"
   ],
   "type": "module",
-  "exports": "./build/index.js",
   "types": "./build/index.d.ts",
+  "main": "./build/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./build/index.mjs",
+      "require": "./build/index.cjs",
+      "types": "./build/index.d.ts"
+    }
+  },
   "license": "MIT",
   "engines": {
     "node": ">=18",
