@@ -2,6 +2,7 @@
   "name": "openai-gpt-assistants",
   "description": "Unofficial stateful wrapper around OpenAI's GPT Assistant API",
   "version": "0.2.5",
+  "repository": "github:patrickjm/openai-gpt-assistants",
   "files": [
     "build",
     "src",
