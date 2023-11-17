@@ -12,6 +12,8 @@ export interface RunEvents {
   actionRequired: (
     action: OpenAI.Beta.Threads.Runs.Run["required_action"],
   ) => void;
+  toolOutputsSubmitted: () => void;
+  toolOutputsDeferred: () => void;
   finished: (err: unknown, status: RunStatus | null) => void;
 }
 
@@ -35,6 +37,10 @@ export class Run extends StatefulObject<
 
   static readonly object = "run";
   readonly object = Run.object;
+
+  get status() {
+    return this.wrappedValue.status;
+  }
 
   /** Retrieves from cache or fetches if missing, then begins polling. */
   async load(options?: OpenAI.RequestOptions) {
@@ -124,6 +130,10 @@ export class Run extends StatefulObject<
     params: OpenAI.Beta.Threads.RunSubmitToolOutputsParams,
     options: OpenAI.RequestOptions = {},
   ) {
+    await this._ctx.cache.fetch('run', { id: this.id, threadId: this.thread.id }, options);
+    if (this.status !== "requires_action") {
+      this.emit("toolOutputsDeferred");
+    }
     const result = await this._ctx.client.beta.threads.runs.submitToolOutputs(
       this.thread.id,
       this.id,
@@ -131,6 +141,7 @@ export class Run extends StatefulObject<
       options,
     );
     this._cache.set(this.object, this.id, result);
+    this.emit("toolOutputsSubmitted");
     return this;
   }
 
@@ -223,6 +234,12 @@ export class Run extends StatefulObject<
       // Emit actionRequired event if the run requires action
       if (run.status === "requires_action") {
         this.emit("actionRequired", run.required_action);
+        this.endPolling();
+        await new Promise<void>(resolve => {
+          this.once("toolOutputsSubmitted", resolve);
+          this.once("toolOutputsDeferred", resolve);
+        })
+        this.beginPolling();
       }
 
       // Emit finished event if the run has finished and end polling
