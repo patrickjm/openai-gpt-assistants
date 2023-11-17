@@ -27,7 +27,7 @@ async function buildFileEsm(filePath: string) {
     platform: "node",
     target: "node18",
     format: "esm",
-    outExtension: { ".js": ".mjs" },
+    outExtension: { ".js": ".js" },
     nodePaths: [srcPath],
     sourcemap: true,
     external: [],
